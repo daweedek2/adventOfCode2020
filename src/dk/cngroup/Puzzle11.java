@@ -110,6 +110,9 @@ public class Puzzle11 {
         int[] x = {-1,0,1};
         int[] y = {-1,0,1};
 
+
+
+
         for (int k: x) {
             for (int l : y) {
                 if (k == 0 && l == 0) {
