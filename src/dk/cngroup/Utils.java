@@ -10,12 +10,13 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class Utils {
-    public static String getPathString(final String day) {
-        return "/Java/adventOfCode2020/puzzle" + day + ".txt";
+    private static final String YEAR = "2021";
+    public static String getPathString( final String day) {
+        return String.format("/Java/adventOfCode2020/src/dk/cngroup/year%s/puzzles/puzzle%s.txt", YEAR, day);
     }
 
     public static Path getPath(final String day) {
-        return Path.of("/Java/adventOfCode2020/puzzle" + day + ".txt");
+        return Path.of(getPathString(day));
     }
 
     public static Integer[] getLinesToIntegerArray(final String day) throws IOException {
