@@ -1,4 +1,6 @@
-package dk.cngroup;
+package dk.cngroup.year2020;
+
+import dk.cngroup.Utils;
 
 import java.awt.*;
 import java.io.IOException;

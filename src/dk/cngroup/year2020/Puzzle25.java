@@ -1,4 +1,4 @@
-package dk.cngroup;
+package dk.cngroup.year2020;
 
 public class Puzzle25 {
     public static void main(String[] args) {

@@ -1,4 +1,4 @@
-package dk.cngroup;
+package dk.cngroup.year2020;
 
 import java.io.File;
 import java.util.ArrayList;

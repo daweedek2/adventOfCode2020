@@ -1,4 +1,4 @@
-package dk.cngroup;
+package dk.cngroup.year2020;
 
 import com.google.common.collect.Multimap;
 import com.google.common.collect.MultimapBuilder;
