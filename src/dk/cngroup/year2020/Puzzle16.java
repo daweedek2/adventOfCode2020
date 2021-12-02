@@ -100,7 +100,7 @@ public class Puzzle16 {
         }
     }
 
-    static<T> T readString(String s, String pattern, Class<T> target) {
+    public static<T> T readString(String s, String pattern, Class<T> target) {
         List<Object> mappedObjs = new ArrayList<>();
         while (s.length() > 0) {
             if (pattern.length() > 1 && pattern.charAt(0) == '%') {

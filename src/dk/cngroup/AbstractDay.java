@@ -8,8 +8,8 @@ import java.io.IOException;
 public abstract class AbstractDay {
     public abstract String getDay();
     public abstract Object getPuzzle(String day) throws IOException;
-    public abstract Object partOne(Object puzzle);
-    public abstract Object partTwo(Object puzzle);
+    public abstract Object partOne(Object puzzle) throws IOException;
+    public abstract Object partTwo(Object puzzle) throws IOException;
 
     void printResult(final Object partOne, final Object partTwo) {
         System.out.println("Part One solution: " + partOne.toString());
