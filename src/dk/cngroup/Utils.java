@@ -9,12 +9,14 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.stream.LongStream;
 import java.util.stream.Stream;
 
 import static com.google.common.base.Preconditions.checkState;
+import static java.util.stream.IntStream.range;
 
 public class Utils {
-    private static final String YEAR = "2021";
+    private static final String YEAR = "2022";
     public static String getPathString( final String day) {
         return String.format("/Java/adventOfCode2020/src/dk/cngroup/year%s/puzzles/puzzle%s.txt", YEAR, day);
     }
@@ -66,10 +68,14 @@ public class Utils {
         }
 
         stringBuilder.deleteCharAt(stringBuilder.length() - 1);
-//        stringBuilder.deleteCharAt(stringBuilder.length() - 1);
+        stringBuilder.deleteCharAt(stringBuilder.length() - 1);
         reader.close();
 
         return stringBuilder.toString();
+    }
+
+    public static char[][] dayGrid(final String day) throws IOException {
+        return getFileLines(day).map(String::toCharArray).toArray(char[][]::new);
     }
 
     public static String getStringWithSingleLineSeparator(final String day) throws IOException {
@@ -106,23 +112,25 @@ public class Utils {
         return Arrays.stream(getString(day).split(delimiter));
     }
 
+    public static Stream<String> dayStream(final String day) throws IOException {
+        return Arrays.stream(getString(day).split("\r\n"));
+    }
+
+    public static LongStream longStream(final String delimiter, final String day) throws IOException {
+        return Arrays.stream(getString(day).split(delimiter))
+                .filter(e -> !e.isEmpty()).map(e -> e.replace("\n", "").trim()).mapToLong(Long::parseLong);
+    }
+
     public static <T> T readString(String s, String pattern, Class<T> target) {
         List<Object> mappedObjs = new ArrayList<>();
         while (s.length() > 0) {
             if (pattern.length() > 1 && pattern.charAt(0) == '%') {
                 int size = mappedObjs.size();
-                switch (pattern.charAt(1)) {
-                    case 'n':
-                        mappedObjs.add(crunchNumber(s, pattern));
-                        break;
-                    case 'c':
-                        mappedObjs.add(s.charAt(0));
-                        break;
-                    case 's':
-                        mappedObjs.add(crunchString(s, pattern));
-                        break;
-                    default:
-                        break;
+                switch ( pattern.charAt( 1 ) )
+                {
+                    case 'n' -> mappedObjs.add(crunchNumber(s, pattern));
+                    case 'c' -> mappedObjs.add(s.charAt(0));
+                    case 's' -> mappedObjs.add(crunchString(s, pattern));
                 }
                 if (mappedObjs.size() != size) {
                     s = s.substring(mappedObjs.get(size).toString().length());
@@ -138,7 +146,7 @@ public class Utils {
             }
         }
         try {
-            checkState(target.getConstructors().length > 0, "Class "+target+" has no constructor!");
+            verify(target.getConstructors().length > 0, "Class "+target+" has no constructor!");
             return (T) Arrays.stream(target.getConstructors()).filter(c -> c.getParameterCount() == mappedObjs.size()).findAny().get()//.getConstructor(mappedObjs.stream().map(Object::getClass).toArray(Class[]::new))
                     .newInstance(mappedObjs.toArray());
         } catch (Exception e) {
@@ -153,4 +161,36 @@ public class Utils {
     static String crunchString(String s, String pattern) {
         return pattern.length() > 2 ? s.substring(0, s.indexOf(pattern.charAt(2))) : s;
     }
+
+    public static int i(long n) {
+        return Math.toIntExact(n);
+    }
+
+
+    public static void verify(boolean b) {
+        verify(b, "Something went wrong");
+    }
+
+    public static void verify(boolean b, String message) {
+        if(!b) {
+            throw new IllegalStateException(message);
+        }
+    }
+
+    public static<A> Stream<Pair<A, A>> connectedPairs(List<A> l) {
+        return range(1, l.size()).mapToObj(i -> Pair.of(l.get(i-1), l.get(i)));
+    }
+
+    public static<A> Stream<Pair<A, A>> pairs(List<A> l) {
+        return range(1, l.size()/2).map(i -> i + ((i-1)*2)).mapToObj(i -> Pair.of(l.get(i-1), l.get(i)));
+    }
+
+    public static<A> Stream<Pair<A, A>> allPairs(List<A> l) {
+        return range(0, l.size()).boxed().flatMap(i -> range(i+1, l.size()).mapToObj(j -> new Pair<>(l.get(i), l.get(j))));
+    }
+
+    public static<A, B> Stream<Pair<A, B>> allPairs(List<A> l1, List<B> l2) {
+        return range(0, l1.size()).boxed().flatMap(i -> l2.stream().map(b -> new Pair<>(l1.get(i), b)));
+    }
+
 }

@@ -7,18 +7,17 @@ import java.io.IOException;
  */
 public abstract class AbstractDay {
     public abstract String getDay();
-    public abstract Object getPuzzle(String day) throws IOException;
+    public abstract Object getPuzzle() throws IOException;
     public abstract Object partOne(Object puzzle) throws IOException;
     public abstract Object partTwo(Object puzzle) throws IOException;
 
-    void printResult(final Object partOne, final Object partTwo) {
-        System.out.println("Part One solution: " + partOne.toString());
-        System.out.println("Part Two solution: " + partTwo.toString());
+    void printResult(final Object result) {
+        System.out.println(result.toString());
     }
 
     public void solve() throws IOException {
         var day = getDay();
-        var puzzle = getPuzzle(day);
-        this.printResult(partOne(puzzle), partTwo(puzzle));
+        this.printResult("Part One solution: " + partOne(getPuzzle()));
+        this.printResult("Part Two solution: " + partTwo(getPuzzle()));
     }
 }

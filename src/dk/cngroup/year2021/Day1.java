@@ -19,7 +19,7 @@ public class Day1 extends AbstractDay {
     }
 
     @Override
-    public Object getPuzzle(final String day) throws IOException {
+    public Object getPuzzle() throws IOException {
         return Utils.getLinesToIntegerArray(getDay());
     }
 

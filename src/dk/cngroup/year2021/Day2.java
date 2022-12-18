@@ -28,7 +28,7 @@ public class Day2 extends AbstractDay {
     }
 
     @Override
-    public Object getPuzzle(final String day) throws IOException {
+    public Object getPuzzle() throws IOException {
         return null;
     }
 
