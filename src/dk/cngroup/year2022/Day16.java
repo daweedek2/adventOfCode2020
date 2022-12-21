@@ -5,10 +5,11 @@ import dk.cngroup.Utils;
 
 import java.io.IOException;
 import java.util.*;
+import java.util.function.Function;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-
-import static dk.cngroup.Utils.readString;
-import static java.util.List.of;
+import java.util.stream.Stream;
 
 /**
  * Created by dkostka on 12/4/2022.
@@ -29,85 +30,136 @@ public class Day16 extends AbstractDay {
     public Object getPuzzle() throws IOException {
         return Utils.getFileLines(getDay());
     }
-    public record Valve(String name, long flow, String others) {}
-    public record State(Map<String, Long> open, Valve valve, long totalFlow) {}
-    public record State2(Map<String, Long> open, Valve me, Valve elephant, long totalFlow) {}
 
     @Override
     public Object partOne(final Object puzzle) throws IOException {
-        Map<String, Valve> valves = input();
-        Set<State> states = new HashSet<>();
-        states.add(new State(new HashMap<>(), valves.get("AA"), 0));
-        for(int minutes = 0; minutes<30; minutes++) {
-            Set<State> newStates = new HashSet<>();
-            for(State s : states) {
-                long flow = s.open.values().stream().mapToLong(e -> e).sum() + s.totalFlow;
-                if(s.valve.flow > 0 && !s.open.containsKey(s.valve.name)) {
-                    Map<String, Long> newOpen = new HashMap<>(s.open);
-                    newOpen.put(s.valve.name, s.valve.flow);
-                    newStates.add(new State(newOpen, s.valve, flow));
-                }
-                Arrays.stream(s.valve.others.split(", ")).forEach(name -> newStates.add(new State(s.open, valves.get(name), flow)));
-            }
-            states = newStates;
-        }
-        return states.stream().mapToLong(State::totalFlow).max().getAsLong();
+        Map<String, Valve> vs = ((Stream<String>) puzzle)
+                .map(Valve::readFromString)
+                .collect(Collectors.toMap(x -> x.name, x -> x));
+      return new DP(new HashMap<>(vs))
+              .value(Collections.emptySet(), vs.get("AA"), 30, 0, new HashMap<>())
+              .values().stream().mapToInt(x -> x).max().orElse(-1);
     }
 
-    private Map<String, Valve> input() throws IOException {
-        return Utils.getFileLines(getDay()).map(s -> {
-            try {
-                return readString(s, "Valve %s has flow rate=%n; tunnels lead to valves %s", Valve.class);
-            } catch (IllegalStateException e) {
-                return readString(s, "Valve %s has flow rate=%n; tunnel leads to valve %s", Valve.class);
-            }
-        }).collect(Collectors.toMap(v -> v.name, v -> v));
-    }
 
     @Override
     public Object partTwo(final Object puzzle) throws IOException {
-        Map<String, Valve> valves = input();
-        Set<String> openable = valves.values().stream().filter(s -> s.flow > 0).map(Valve::name).collect(Collectors.toSet());
-        Set<State2> states = new HashSet<>();
-        states.add(new State2(new HashMap<>(), valves.get("AA"), valves.get("AA"), 0));
-        Map<Integer, Long> kpis = Map.of(5, 25L, 10, 50L, 15, 100L, 20, 140L, 25, 160L);
-        for(int minutes = 0; minutes<26; minutes++) {
-            Set<State2> newStates = new HashSet<>();
-            for(State2 s : states) {
-                long flow = s.open.values().stream().mapToLong(e -> e).sum() + s.totalFlow;
-                if(s.open.size() == openable.size()) { // All valves are open, time to chill
-                    newStates.add(new State2(s.open, valves.get("AA"), valves.get("AA"), flow));
-                }
-                int nStates = newStates.size();
-                newStates.addAll(openValve(s.me, s.elephant, false, valves, s, flow));
-                newStates.addAll(openValve(s.elephant, s.me, false, valves, s, flow));
-                newStates.addAll(openValve(s.me, s.elephant, true, valves, s, flow));
-                if(newStates.size() == nStates) { // If there are no valves to be opened, we walk
-                    Utils.allPairs(of(s.me.others.split(", ")), of(s.elephant.others.split(", ")))
-                            .forEach(p -> newStates.add(new State2(s.open, valves.get(p.a()), valves.get(p.b()), flow)));
-                }
-            }
-            states = newStates;
-            if(kpis.containsKey(minutes)){
-                long kpi = kpis.get(minutes);
-                states = states.stream().filter(e -> e.open.values().stream().mapToLong(f -> f).sum()<kpi).collect(Collectors.toSet());
-            }
-        }
-        return states.stream().mapToLong(State2::totalFlow).max().getAsLong();
+        Map<String, Valve> vs = ((Stream<String>) puzzle)
+                .map(Valve::readFromString)
+                .collect(Collectors.toMap(x -> x.name, x -> x));
+
+        var p2 = new DP(new HashMap<>(vs))
+                .value(Collections.emptySet(), vs.get("AA"), 26, 0, new HashMap<>());
+
+        return p2.entrySet().stream()
+                .flatMapToInt(kv1 -> p2.entrySet().stream()
+                        .filter(kv2 -> disjoint(kv1.getKey(), kv2.getKey()))
+                        .mapToInt(kv2 -> kv1.getValue() + kv2.getValue()))
+                .max().orElse(-1);
     }
 
-    private List<State2> openValve(Valve v1, Valve v2, boolean both, Map<String, Valve> valves, State2 s, long flow) {
-        if(v1.flow > 0 && !s.open.containsKey(v1.name) && (!both || (v2.flow > 0 && !s.open.containsKey(v2.name)))) {
-            Map<String, Long> newOpen = new HashMap<>(s.open);
-            newOpen.put(v1.name, v1.flow);
-            if(both) {
-                newOpen.put(v2.name, v2.flow);
-                return of(new State2(newOpen, v1, v2, flow));
-            }
-            return Arrays.stream(v2.others.split(", ")).map(name -> new State2(newOpen, v1, valves.get(name), flow)).toList();
+    class DP {
+
+        private final ShortestPaths<Valve> dists;
+        private final List<Valve> unstuckValves;
+
+        public DP(Map<String, Valve> vs) {
+            this.dists =
+                    new ShortestPaths<>(vs.values(), v -> v.tunnelNames.stream().map(vs::get)::iterator);
+            this.unstuckValves = vs.values().stream()
+                    .filter(v -> v.rate != 0)
+                    .collect(Collectors.toList());
         }
-        return of();
+
+        public Map<Set<Valve>, Integer> value(
+                Set<Valve> open,
+                Valve u,
+                int timeRemaining,
+                int flowSoFar,
+                Map<Set<Valve>, Integer> bestFlowByValveSet) {
+
+            bestFlowByValveSet.merge(open, flowSoFar, Math::max);
+
+            for (Valve v : unstuckValves) {
+                int timeAfter = timeRemaining - dists.getDist(u, v) - 1;
+                if (open.contains(v) || timeAfter <= 0) {
+                    continue;
+                }
+                value(adjoin(v, open), v, timeAfter, timeAfter * v.rate + flowSoFar, bestFlowByValveSet);
+            }
+
+            return bestFlowByValveSet;
+        }
     }
 
+    static class ShortestPaths<T> {
+
+        private final Map<T, Map<T, Integer>> weights = new HashMap<>();
+
+        public ShortestPaths(Iterable<T> nodes, Function<T, Iterable<T>> neighbors) {
+            for (T x : nodes) {
+                setDist(0, x, x);
+                for (T y : neighbors.apply(x)) {
+                    setDist(1, x, y);
+                }
+            }
+            for (T k : nodes) {
+                for (T i : nodes) {
+                    for (T j : nodes) {
+                        setDist(Math.min(add(getDist(i, k), getDist(k, j)), getDist(i, j)), i, j);
+                    }
+                }
+            }
+        }
+
+        private int add(int x, int y) {
+            return x == Integer.MAX_VALUE || y == Integer.MAX_VALUE
+                    ? Integer.MAX_VALUE
+                    : Math.addExact(x, y);
+        }
+
+        private Integer setDist(int d, T x, T y) {
+            return weights.computeIfAbsent(x, ign -> new HashMap<>()).put(y, d);
+        }
+
+        public int getDist(T x, T y) {
+            return weights.computeIfAbsent(x, ign -> new HashMap<>())
+                    .computeIfAbsent(y, ign2 -> Integer.MAX_VALUE);
+        }
+    }
+
+
+    static class Valve {
+        private static final Pattern linePattern =
+                Pattern.compile("Valve (.*) has flow rate=(.*); tunnels? leads? to valves? (.*)");
+        String name;
+        int rate;
+        List<String> tunnelNames;
+        List<Valve> tunnels;
+
+        public static Valve readFromString(String line) {
+            Valve v = new Valve();
+            Matcher m = linePattern.matcher(line);
+            if (!m.matches()) {
+                throw new IllegalStateException("bad line: " + line);
+            }
+            v.name = m.group(1);
+            v.rate = Integer.parseInt(m.group(2));
+            v.tunnelNames = Arrays.asList(m.group(3).split(", "));
+            return v;
+        }
+    }
+
+    private static <T> boolean disjoint(Set<T> a, Set<T> b) {
+        Set<T> ab = new HashSet<>(a);
+        ab.addAll(b);
+        return ab.size() == a.size() + b.size();
+    }
+
+    private static <T> Set<T> adjoin(T element, Set<T> s) {
+        Set<T> ss = new HashSet<>(s);
+        ss.add(element);
+        return ss;
+    }
 }
 

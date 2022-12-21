@@ -8,6 +8,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.LongStream;
 import java.util.stream.Stream;
@@ -193,4 +194,36 @@ public class Utils {
         return range(0, l1.size()).boxed().flatMap(i -> l2.stream().map(b -> new Pair<>(l1.get(i), b)));
     }
 
+    public static LongStream dayNumberStream() throws IOException {
+        return dayNumberStream("\r\n");
+    }
+
+    public static LongStream dayNumberStream(String delimiter) throws IOException {
+        return dayStream(delimiter).filter(e -> !e.isEmpty()).map(e -> e.replace("\n", "").trim()).mapToLong(Long::parseLong);
+    }
+
+    public static long binarySearch(Function<Long, Long> testFunction, long target, long low, long high) {
+        while(true) {
+            if(low == high) return low;
+            long size = (high - low) / 3;
+            long l1 = low + size;
+            long res1 = testFunction.apply(l1);
+            long diff1 = Math.abs(res1 - target);
+            if(diff1 == 0) return l1;
+            long l2 = l1 + size;
+            long res2 = testFunction.apply(l2);
+            long diff2 = Math.abs(res2 - target);
+            if(diff2 == 0) return l2;
+            if(diff1 <= diff2) high = l2-1;
+            if (diff1 >= diff2) low = l1+1;
+        }
+    }
+
+    public static long binarySearch(Function<Long, Long> testFunction, long low, long high) {
+        return binarySearch(testFunction, 0, low, high);
+    }
+
+    public static long binarySearch(Function<Long, Long> testFunction) {
+        return binarySearch(testFunction, 0, 0, Long.MAX_VALUE);
+    }
 }
